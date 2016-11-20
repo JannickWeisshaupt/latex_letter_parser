@@ -40,6 +40,14 @@ def if_finder(in_string):
     search_res = re.findall(ur'#IF:([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
     return search_res
 
+def ifnot_finder(in_string):
+    search_res = re.findall(ur'#IFNOT:([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
+    return search_res
+
+def ifequal_finder(in_string):
+    search_res = re.findall(ur'#IF=:([\w\s]+):([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
+    return search_res
+
 
 def subprocess_cmd(command,print_output=False):
     process = sp.Popen(command, stdout=sp.PIPE, shell=True)
@@ -80,13 +88,28 @@ for i, row in enumerate(table.iterrows()):
         parsed_tex = parsed_tex.replace(u'#' + table_key + u'#', in_string)
 
     parsed_if_statements = if_finder(parsed_tex)
-
     for if_key, if_input in parsed_if_statements:
         table_value = row_dict[if_key]
         if not test_nan(table_value):
             parsed_tex = parsed_tex.replace(u'#IF:' + if_key + u':' + if_input + u'#', if_input)
         else:
             parsed_tex = parsed_tex.replace(u'#IF:' + if_key + u':' + if_input + u'#', u'')
+
+    parsed_ifnot_statements = ifnot_finder(parsed_tex)
+    for if_key, if_input in parsed_ifnot_statements:
+        table_value = row_dict[if_key]
+        if test_nan(table_value):
+            parsed_tex = parsed_tex.replace(u'#IFNOT:' + if_key + u':' + if_input + u'#', if_input)
+        else:
+            parsed_tex = parsed_tex.replace(u'#IFNOT:' + if_key + u':' + if_input + u'#', u'')
+
+    parsed_ifequal_statements = ifequal_finder(parsed_tex)
+    for if_key,test_value, if_input in parsed_ifequal_statements:
+        table_value = row_dict[if_key]
+        if table_value == test_value:
+            parsed_tex = parsed_tex.replace(u'#IF=:'+if_key+u':' +  test_value+ u':' + if_input + u'#', if_input)
+        else:
+            parsed_tex = parsed_tex.replace(u'#IF=:'+if_key+u':' + test_value + u':' + if_input + u'#', u'')
 
     parsed_tex = parsed_tex.replace(u"\u00DF",ur'{\ss}')
     parsed_tex = parsed_tex.replace(u"\u00FC",ur'\"u')
