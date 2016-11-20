@@ -1,0 +1,23 @@
+%#Necessary fields: Name, Adresse, Plz, Ort
+
+
+\documentclass[12pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+
+
+\begin{document}
+\noindent
+#Name#\\
+#Adresse#\\
+#Adresse2# #IF:Adresse2:\\##Plz# #Ort#\\
+\\
+Sehr geehrte Damen und Herren,\\
+\\
+wir testen hier an ihnen #Name#, wohnhaft in #Adresse# unseren Parser.
+
+Mit freundlichen Grü{\ss}en,
+IScientist Team
+
+
+\end{document}
