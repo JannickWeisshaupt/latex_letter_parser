@@ -1,3 +1,7 @@
+#!/usr/bin/python
+# -*- coding: <utf-8> -*-
+
+
 from pandas import read_csv
 import subprocess as sp
 import os
@@ -51,7 +55,7 @@ def test_nan(in_value):
         else:
             return False
 
-print('PyParser fuer iScientist wurde gestartet\n--------------------------------------')
+print('PyParser fuer latex Briefe wurde gestartet\n--------------------------------------')
 
 for i, row in enumerate(table.iterrows()):
     print('Parsing row {0:d} '.format(i))
@@ -59,8 +63,7 @@ for i, row in enumerate(table.iterrows()):
         if row[1][nec_fields].isnull().values.any():
             print('Necessary fields were not supplied')
             continue
-    print('')
-
+    
     parsed_tex = tex_string
     row_dict = row[1].to_dict()
     for table_key in row_dict.keys():
@@ -90,9 +93,10 @@ for i, row in enumerate(table.iterrows()):
 
     with open(out_directory + '/parsed' + str(i) + '.tex', 'w') as f:
         f.write(parsed_tex)
-
+    print('Calling latex')
     subprocess_cmd('cd ' + out_directory + '&pdflatex parsed' + str(i) + '.tex')
     filename_list.append('parsed' + str(i) + '.pdf')
+    print('')
 
 print('')
 print('Finished parsing Files\nNow latex is called')

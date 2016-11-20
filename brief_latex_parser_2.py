@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: <utf-8> -*-
+
 from __future__ import with_statement
 from __future__ import absolute_import
 from pandas import read_csv
@@ -62,7 +65,6 @@ for i, row in enumerate(table.iterrows()):
         if row[1][nec_fields].isnull().values.any():
             print u'Necessary fields were not supplied'
             continue
-    print u''
 
     parsed_tex = tex_string
     row_dict = row[1].to_dict()
@@ -100,8 +102,11 @@ for i, row in enumerate(table.iterrows()):
     with open(out_directory + u'/parsed' + unicode(i) + u'.tex', u'w') as f:
         f.write(parsed_tex)
 
+    print u'Calling latex'
     subprocess_cmd(u'cd ' + out_directory + u';pdflatex parsed' + unicode(i) + u'.tex')
     filename_list.append(u'parsed' + unicode(i) + u'.pdf')
+    print u''
+
 
 print u''
 print u'Finished parsing Files\nNow latex is called'
