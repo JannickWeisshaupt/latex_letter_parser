@@ -7,12 +7,13 @@ import subprocess as sp
 import os
 import re
 import math
+import ftfy
 
 import tkinter as tk
 from tkinter import filedialog
 
 root = tk.Tk()
-filename_latex  = filedialog.askopenfilename(master=root,filetypes=[('tex', '.tex'), ('all files', '.*')],title='Choose tex file')
+filename_latex = filedialog.askopenfilename(master=root,filetypes=[('tex', '.tex'), ('all files', '.*')],title='Choose tex file')
 filename_table = filedialog.askopenfilename(master=root,filetypes=[('csv', '.csv'), ('all files', '.*')],title='Choose csv file')
 out_directory = os.path.dirname(filename_latex)+'/output'
 
@@ -24,10 +25,20 @@ out_directory = os.path.dirname(filename_latex)+'/output'
 
 table = read_csv(filename_table, error_bad_lines=True, encoding="ISO-8859-1", decimal=",")
 
+
+def fix_encoding_table(x):
+    if type(x) == str:
+        return ftfy.fix_text(x)
+    else:
+        return x
+
+table.applymap(fix_encoding_table)
+
 filename_list = []
 
 with open(filename_latex, 'r') as f:
-    tex_string = f.read()
+    tex_string = ftfy.fix_text(f.read())
+
 
 nec_fields = []
 try:
@@ -42,13 +53,16 @@ def if_finder(in_string):
     search_res = re.findall(r'#IF:([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
     return search_res
 
+
 def ifnot_finder(in_string):
     search_res = re.findall(r'#IFNOT:([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
     return search_res
 
+
 def ifequal_finder(in_string):
     search_res = re.findall(r'#IF=:([\w\s]+):([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
     return search_res
+
 
 def subprocess_cmd(command,print_output=False):
     process = sp.Popen(command, stdout=sp.PIPE, shell=True)
