@@ -8,18 +8,18 @@
 
 \begin{document}
 \noindent
-#Name#\\
-#Adresse#\\
-#Adresse2# #IF:Adresse2:\\##Plz# #Ort#\\
+#Name&\\
+#Adresse&\\
+#Adresse2& #IF|Adresse2|\\&#Plz& #Ort&\\
 \\
 Sehr geehrte Damen und Herren,\\
 \\
-wir testen hier an ihnen #Name#, wohnhaft in #Adresse# unseren Parser.
+wir testen hier an ihnen #Name&, wohnhaft in #Adresse& unseren Parser.
 
-#IFNOT:Adresse2:Adresse2 fehlt#
-#IF=:Name:Test Institut:Funktioniert#
+#IFNOT|Adresse2|Adresse2 fehlt&
+#IF=|Name|Test Institut|Funktioniert&
 
-Mit freundlichen Grü{\ss}en,
+Mit freundlichen GrÃ¼{\ss}en,
 ihr Test Team
 
 \end{document}

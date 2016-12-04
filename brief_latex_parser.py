@@ -23,7 +23,7 @@ out_directory = os.path.dirname(filename_latex)+'/output'
 # filename_table='example.csv'
 
 
-table = read_csv(filename_table, error_bad_lines=True, encoding="ISO-8859-1", decimal=",")
+table = read_csv(filename_table, error_bad_lines=True, encoding="ISO-8859-1", decimal=",",dtype=str )
 
 
 def fix_encoding_table(x):
@@ -49,18 +49,29 @@ except:
     print('Could not read in necessary fields')
 
 
+pattern_input = '([\w\s\\\{\}\[\],.~]*)'
+
+
+
 def if_finder(in_string):
-    search_res = re.findall(r'#IF:([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
+    search_res = re.findall(r'#IF\|([\w\s]+)\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
+def if_else_finder(in_string):
+    search_res = re.findall(r'#IF\|([\w\s]+)\|'+pattern_input+'\|ELSE\|'+pattern_input+'&', in_string, re.UNICODE)
+    return search_res
 
 def ifnot_finder(in_string):
-    search_res = re.findall(r'#IFNOT:([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
+    search_res = re.findall(r'#IFNOT\|([\w\s]+)\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 
 def ifequal_finder(in_string):
-    search_res = re.findall(r'#IF=:([\w\s]+):([\w\s]+):([\w\s\\\{\}\[\],.]*)#', in_string, re.UNICODE)
+    search_res = re.findall(r'#IF=\|([\w\s]+)\|([\w\s]+)\|'+pattern_input+'&', in_string, re.UNICODE)
+    return search_res
+
+def ifequal_else_finder(in_string):
+    search_res = re.findall(r'#IF=\|([\w\s]+)\|([\w\s]+)\|'+pattern_input+'\|ELSE\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 
@@ -100,33 +111,58 @@ for i, row in enumerate(table.iterrows()):
                 in_string = str(table_value)
         else:
             in_string = ''
-        parsed_tex = parsed_tex.replace('#' + table_key + '#', in_string)
+        parsed_tex = parsed_tex.replace('#' + table_key + '&', in_string)
 
+    while True:
+        parsed_if_statements = if_finder(parsed_tex)
+        for if_key, if_input in parsed_if_statements:
+            table_value = row_dict[if_key]
+            if not test_nan(table_value):
+                parsed_tex = parsed_tex.replace(u'#IF|' + if_key + u'|' + if_input + u'&', if_input)
+            else:
+                parsed_tex = parsed_tex.replace(u'#IF|' + if_key + u'|' + if_input + u'&', u'')
 
-    parsed_if_statements = if_finder(parsed_tex)
-    for if_key, if_input in parsed_if_statements:
-        table_value = row_dict[if_key]
-        if not test_nan(table_value):
-            parsed_tex = parsed_tex.replace('#IF:' + if_key + ':' + if_input + '#', if_input)
-        else:
-            parsed_tex = parsed_tex.replace('#IF:' + if_key + ':' + if_input + '#', '')
+        parsed_if_else_statements = if_else_finder(parsed_tex)
+        for if_key, if_input, else_input in parsed_if_else_statements:
+            table_value = row_dict[if_key]
+            if not test_nan(table_value):
+                parsed_tex = parsed_tex.replace(u'#IF|' + if_key + u'|' + if_input + u'|ELSE|' + else_input + u'&',
+                                                if_input)
+            else:
+                parsed_tex = parsed_tex.replace(u'#IF|' + if_key + u'|' + if_input + u'|ELSE|' + else_input + u'&',
+                                                else_input)
 
-    parsed_ifnot_statements = ifnot_finder(parsed_tex)
-    for if_key, if_input in parsed_ifnot_statements:
-        table_value = row_dict[if_key]
-        if test_nan(table_value):
-            parsed_tex = parsed_tex.replace('#IFNOT:' + if_key + ':' + if_input + '#', if_input)
-        else:
-            parsed_tex = parsed_tex.replace('#IFNOT:' + if_key + ':' + if_input + '#', '')
+        parsed_ifnot_statements = ifnot_finder(parsed_tex)
+        for if_key, if_input in parsed_ifnot_statements:
+            table_value = row_dict[if_key]
+            if test_nan(table_value):
+                parsed_tex = parsed_tex.replace(u'#IFNOT|' + if_key + u'|' + if_input + u'&', if_input)
+            else:
+                parsed_tex = parsed_tex.replace(u'#IFNOT|' + if_key + u'|' + if_input + u'&', u'')
 
-    parsed_ifequal_statements = ifequal_finder(parsed_tex)
-    for if_key,test_value, if_input in parsed_ifequal_statements:
-        table_value = row_dict[if_key]
-        if table_value == test_value:
-            parsed_tex = parsed_tex.replace('#IF=:'+if_key+':' +  test_value+ ':' + if_input + '#', if_input)
-        else:
-            parsed_tex = parsed_tex.replace('#IF=:'+if_key+':' + test_value + ':' + if_input + '#', '')
+        parsed_ifequal_statements = ifequal_finder(parsed_tex)
+        for if_key, test_value, if_input in parsed_ifequal_statements:
+            table_value = row_dict[if_key]
+            if table_value == test_value:
+                parsed_tex = parsed_tex.replace(u'#IF=|' + if_key + u'|' + test_value + u'|' + if_input + u'&',
+                                                if_input)
+            else:
+                parsed_tex = parsed_tex.replace(u'#IF=|' + if_key + u'|' + test_value + u'|' + if_input + u'&', u'')
 
+        parsed_ifequal_else_statements = ifequal_else_finder(parsed_tex)
+        for if_key, test_value, if_input, else_input in parsed_ifequal_else_statements:
+            table_value = row_dict[if_key]
+            if table_value == test_value:
+                parsed_tex = parsed_tex.replace(
+                    u'#IF=|' + if_key + u'|' + test_value + u'|' + if_input + u'|ELSE|' + else_input + u'&', if_input)
+            else:
+                parsed_tex = parsed_tex.replace(
+                    u'#IF=|' + if_key + u'|' + test_value + u'|' + if_input + u'|ELSE|' + else_input + u'&', else_input)
+
+        if len(parsed_if_statements) == 0 and len(parsed_ifnot_statements) == 0 and len(
+                parsed_ifequal_statements) == 0 and len(parsed_ifequal_else_statements) == 0 and len(
+                parsed_if_else_statements) == 0:
+            break
 
     parsed_tex = parsed_tex.replace('ß',r'{\ss}')
 
@@ -152,7 +188,7 @@ main_tex = r"""
 """
 
 for filename in filename_list:
-    main_tex += r'\includepdf[pages=-]{' + filename + '}\n'
+    main_tex += r'\includepdf[fitpaper,pages=-]{' + filename + '}\n'
 
 main_tex += r'\end{document}'
 
