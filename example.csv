@@ -1,4 +1,7 @@
-Name,Adresse,Adresse2,Plz,Ort
-Test Institut,Test-Straße 2a,z. H. Prof. Test,10245,Berlin
-Test Institut mit ÄÖßß,Test Str. 8,,12039,Karte
-Bäd test,,asda,asda,asda
+Name,Adresse,Adresse2,Plz,Ort,zu drucken
+Test Institut,Test-Straße 2a,z. H. Prof. Test,10245,Berlin,1
+Test Institut mit ÄÖßß,Test Str. 8,,12039,Karte,1
+Bäd test,,asda,asda,asda,0
+Test Institut,Test-Straße 2a,z. H. Prof. Test,10245,Berlin,1
+Test Institut mit ÄÖßß,Test Str. 8,,12039,Karte,1
+Bäd test,,asda,asda,asda,1

@@ -8,6 +8,7 @@ import os
 import re
 import math
 import ftfy
+import threading
 
 import tkinter as tk
 from tkinter import filedialog
@@ -23,7 +24,7 @@ out_directory = os.path.dirname(filename_latex)+'/output'
 # filename_table='example.csv'
 
 
-table = read_csv(filename_table, error_bad_lines=True, encoding="ISO-8859-1", decimal=",",dtype=str )
+table = read_csv(filename_table, error_bad_lines=True, encoding="ISO-8859-1", decimal=",", dtype=str)
 
 
 def fix_encoding_table(x):
@@ -42,45 +43,73 @@ with open(filename_latex, 'r') as f:
 
 nec_fields = []
 try:
-    nec_fields_reg = re.search(r'#Necessary fields:\s*((\w+)(,\s*\w+)*)', tex_string).group(1).split(',')
+    nec_fields_reg = re.search(r'#Necessary fields:\s*(([\w\s]+)(,\s*[\w\s]+)*)&', tex_string).group(1).split(',')
     for res in nec_fields_reg:
         nec_fields.append(res.replace(',', '').lstrip().rstrip())
-except:
+except Exception:
     print('Could not read in necessary fields')
 
+bool_fields = []
+try:
+    bool_fields_reg = re.search(r'#Output bool:\s*(([\w\s]+)(,\s*[\w\s]+)*)&', tex_string).group(1).split(',')
+    for res in bool_fields_reg:
+        bool_fields.append(res.replace(',', '').lstrip().rstrip())
+except Exception:
+    print('Could not read in output bool fields')
 
 pattern_input = '([\w\s\\\{\}\[\],.~]*)'
 
 
 
 def if_finder(in_string):
-    search_res = re.findall(r'#IF\|([\w\s]+)\|'+pattern_input+'&', in_string, re.UNICODE)
+    search_res = re.findall(r'#IF\|([\w\s,.]+)\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 def if_else_finder(in_string):
-    search_res = re.findall(r'#IF\|([\w\s]+)\|'+pattern_input+'\|ELSE\|'+pattern_input+'&', in_string, re.UNICODE)
+    search_res = re.findall(r'#IF\|([\w\s,.]+)\|'+pattern_input+'\|ELSE\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 def ifnot_finder(in_string):
-    search_res = re.findall(r'#IFNOT\|([\w\s]+)\|'+pattern_input+'&', in_string, re.UNICODE)
+    search_res = re.findall(r'#IFNOT\|([\w\s,.]+)\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 
 def ifequal_finder(in_string):
-    search_res = re.findall(r'#IF=\|([\w\s]+)\|([\w\s]+)\|'+pattern_input+'&', in_string, re.UNICODE)
+    search_res = re.findall(r'#IF=\|([\w\s,.]+)\|([\w\s,.]+)\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 def ifequal_else_finder(in_string):
-    search_res = re.findall(r'#IF=\|([\w\s]+)\|([\w\s]+)\|'+pattern_input+'\|ELSE\|'+pattern_input+'&', in_string, re.UNICODE)
+    search_res = re.findall(r'#IF=\|([\w\s,.]+)\|([\w\s,.]+)\|'+pattern_input+'\|ELSE\|'+pattern_input+'&', in_string, re.UNICODE)
     return search_res
 
 
 def subprocess_cmd(command,print_output=False):
     process = sp.Popen(command, stdout=sp.PIPE, shell=True)
-    proc_stdout = process.communicate()[0].strip()
     if print_output:
+        proc_stdout = process.communicate()[0].strip()
         print(proc_stdout)
 
+
+def run_command_with_timeout(cmd, timeout_sec=5):
+    """Execute `cmd` in a subprocess and enforce timeout `timeout_sec` seconds.
+
+    Return subprocess exit code on natural completion of the subprocess.
+    Raise an exception if timeout expires before subprocess completes."""
+    proc = sp.Popen(cmd, shell=True, stdout=sp.PIPE)
+    proc_thread = threading.Thread(target=proc.communicate)
+    proc_thread.start()
+    proc_thread.join(timeout_sec)
+    if proc_thread.is_alive():
+        # Process still running - kill it and raise timeout error
+        try:
+            proc.kill()
+        except OSError as e:
+            # The process finished between the `is_alive()` and `kill()`
+            return proc.returncode
+        # OK, the process was definitely killed
+        raise TimeoutError('Process #%d killed after %f seconds' % (proc.pid, timeout_sec))
+    # Process completed naturally - return exit code
+    return proc.returncode
 
 def test_nan(in_value):
     if type(in_value) == str:
@@ -91,15 +120,25 @@ def test_nan(in_value):
         else:
             return False
 
+def str2bool(in_string):
+    if in_string.lower() in ['1','true','wahr','ja']:
+        return True
+    else:
+        return False
+
 print('PyParser fuer latex Briefe wurde gestartet\n--------------------------------------')
 
 for i, row in enumerate(table.iterrows()):
-    print('Parsing row {0:d} '.format(i))
+    if len(bool_fields)>0:
+        if not row[1][bool_fields].apply(str2bool).all():
+            continue
+
+    print('Parsing and calling latex on row {0:d} '.format(i))
     if len(nec_fields) > 0:
         if row[1][nec_fields].isnull().values.any():
             print('Necessary fields were not supplied')
             continue
-    
+
     parsed_tex = tex_string
     row_dict = row[1].to_dict()
     for table_key in row_dict.keys():
@@ -172,16 +211,24 @@ for i, row in enumerate(table.iterrows()):
     with open(out_directory + '/parsed' + str(i) + '.tex', 'w') as f:
         f.write(parsed_tex)
 
-    print('Calling latex')
-    subprocess_cmd('cd ' + out_directory + '&pdflatex parsed' + str(i) + '.tex')
-    filename_list.append('parsed' + str(i) + '.pdf')
+    try:
+        return_code = run_command_with_timeout('cd ' + out_directory + '&pdflatex parsed' + str(i) + '.tex -interaction=nonstopmode')
+        if return_code == 0:
+            filename_list.append('parsed' + str(i) + '.pdf')
+            print('Success')
+        else:
+            print("Latex did not compile not successfully")
+    except TimeoutError:
+        print('Latex timeout after 5 seconds. Continuing with next row. Press ctrl+c to abort')
+        continue
+
     print('')
 
 print('')
-print('Finished parsing Files\nNow latex is called')
+print('Finished with single files. Now appending to main.pdf')
 
 main_tex = r"""
-\documentclass{article}
+\documentclass[a4paper]{article}
 \usepackage{pdfpages}
 \begin{document}
 
@@ -195,9 +242,16 @@ main_tex += r'\end{document}'
 with open(out_directory + '/main.tex', 'w') as f:
     f.write(main_tex)
 
-subprocess_cmd('cd ' + out_directory + '&pdflatex main.tex')
-print('Finished')
-# messagebox.showinfo(master=root,message='Program finished')
+
+try:
+    return_code = run_command_with_timeout('cd ' + out_directory + '&pdflatex main.tex -interaction=nonstopmode',timeout_sec=120)
+    if return_code == 0:
+        print('Success. {0:d} letters were joined into main.pdf'.format(len(filename_list)))
+    else:
+        print("Latex did not compile not successfully")
+
+except TimeoutError:
+    print('Latex timeout after 120 seconds.')
 
 
 root.destroy()
