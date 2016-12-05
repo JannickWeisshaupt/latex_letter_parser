@@ -43,7 +43,7 @@ with open(filename_latex, 'r') as f:
 
 nec_fields = []
 try:
-    nec_fields_reg = re.search(r'#Necessary fields:\s*(([\w\s]+)(,\s*[\w\s]+)*)&', tex_string).group(1).split(',')
+    nec_fields_reg = re.search(r'#Necessary fields:\s*(([\w]+[\w\s]*)(,\s*[\w]+[\w\s]*)*)&', tex_string).group(1).split(',')
     for res in nec_fields_reg:
         nec_fields.append(res.replace(',', '').lstrip().rstrip())
 except Exception:
@@ -51,7 +51,7 @@ except Exception:
 
 bool_fields = []
 try:
-    bool_fields_reg = re.search(r'#Output bool:\s*(([\w\s]+)(,\s*[\w\s]+)*)&', tex_string).group(1).split(',')
+    bool_fields_reg = re.search(r'#Output bool:\s*(([\w]+[\w\s]*)(,\s*[\w]+[\w\s]*)*)&', tex_string).group(1).split(',')
     for res in bool_fields_reg:
         bool_fields.append(res.replace(',', '').lstrip().rstrip())
 except Exception:
@@ -129,7 +129,7 @@ def str2bool(in_string):
 print('PyParser fuer latex Briefe wurde gestartet\n--------------------------------------')
 
 for i, row in enumerate(table.iterrows()):
-    if len(bool_fields)>0:
+    if len(bool_fields) > 0:
         if not row[1][bool_fields].apply(str2bool).all():
             continue
 
