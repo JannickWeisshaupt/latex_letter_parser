@@ -24,8 +24,7 @@ out_directory = os.path.dirname(filename_latex)+'/output'
 # filename_table='example.csv'
 
 
-table = read_csv(filename_table, error_bad_lines=True, encoding="ISO-8859-1", decimal=",", dtype=str)
-
+table = read_csv(filename_table, dtype=str)
 
 def fix_encoding_table(x):
     if type(x) == str:
@@ -208,11 +207,13 @@ for i, row in enumerate(table.iterrows()):
     if not os.path.exists(out_directory):
         os.makedirs(out_directory)
 
-    with open(out_directory + '/parsed' + str(i) + '.tex', 'w') as f:
+    filename = f'{out_directory}/parsed{i}.tex'
+
+    with open(filename, 'w') as f:
         f.write(parsed_tex)
 
     try:
-        return_code = run_command_with_timeout('cd ' + out_directory + '&pdflatex parsed' + str(i) + '.tex -interaction=nonstopmode')
+        return_code = run_command_with_timeout(f'pdflatex -output-directory {out_directory} -interaction=nonstopmode {filename}')
         if return_code == 0:
             filename_list.append('parsed' + str(i) + '.pdf')
             print('Success')
@@ -235,7 +236,7 @@ main_tex = r"""
 """
 
 for filename in filename_list:
-    main_tex += r'\includepdf[fitpaper,pages=-]{' + filename + '}\n'
+    main_tex += f'\includepdf[fitpaper,pages=-]{{{out_directory}/{filename}}}\n'
 
 main_tex += r'\end{document}'
 
@@ -244,7 +245,7 @@ with open(out_directory + '/main.tex', 'w') as f:
 
 
 try:
-    return_code = run_command_with_timeout('cd ' + out_directory + '&pdflatex main.tex -interaction=nonstopmode',timeout_sec=120)
+    return_code = run_command_with_timeout(f'pdflatex -output-directory {out_directory} -interaction=nonstopmode {out_directory}/main.tex', timeout_sec=120)
     if return_code == 0:
         print('Success. {0:d} letters were joined into main.pdf'.format(len(filename_list)))
     else:
